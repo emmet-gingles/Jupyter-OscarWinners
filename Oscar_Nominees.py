@@ -6,14 +6,14 @@
 # This project follows the same structure as Oscar_Nominees.ipynb but it focuses on all nominees not just the winners
 
 
-# In[1]:
+# In[2]:
 
 import urllib2;                    # for retrieving the contents of a page
 from bs4 import BeautifulSoup;     # for parsing the contents of a page to HTML
 import pandas as pd                # for creating dataframes
 
 
-# In[2]:
+# In[3]:
 
 # Function that takes in a URL and returns the contents of the page
 def loadPage(url):
@@ -25,7 +25,7 @@ def loadPage(url):
 winnerStyle = 'background:#FAEB86'
 
 
-# In[3]:
+# In[4]:
 
 # Page 1- Best Picture
 # Call function to read in URL and retrieve data from the page
@@ -34,7 +34,7 @@ data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Picture")
 tables = data.findAll("table", class_= "wikitable")
 
 
-# In[4]:
+# In[5]:
 
 # Here we extract each film, nominee and year
 # There are tables for each decade starting from the 1920's. We want to go through each table and extract the appropriate information
@@ -108,7 +108,7 @@ for i in range(0, 11):
             nominees.append("".join(nominee).encode('utf-8').strip() )     
 
 
-# In[5]:
+# In[6]:
 
 # Check the length of each lists. Nominees and films are the same length
 print(len(years))
@@ -116,7 +116,7 @@ print(len(nominees))
 print(len(films))
 
 
-# In[6]:
+# In[7]:
 
 # Data frame to store the following information - year, film, nominees and whether or not it is an Oscar winner
 df_picture = pd.DataFrame(columns = ["Year","Film","Nominee","Winner"])
@@ -137,6 +137,12 @@ for index, row in df_yearRows.iterrows():
         # If the film is in the list of winners then set variable to "Yes"
         if film in winners:
             isWinner = "Yes" 
+            # We then want to find the key that stores that film so we can delete it. This is necessary in case of 
+            # remakes of previous winners eg. "Mutiny on the Bounty"
+            for key, value in enumerate(winners):
+                if value == film:
+                    del winners[key]
+                    break
         # Append all variable to data frame
         df_picture.loc[df_picture.shape[0]] = [year, film, nominee, isWinner]
     # Increment start 
@@ -145,14 +151,14 @@ for index, row in df_yearRows.iterrows():
 df_picture.loc[df_picture["Winner"] == "Yes"]
 
 
-# In[7]:
+# In[8]:
 
 # Page2 - Best Director
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Director")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[8]:
+# In[9]:
 
 # Here we extract each film, director and year - All subsequent pages follow the a similar process
 # Create empty lists for each film, director and year
@@ -224,7 +230,7 @@ for row in tables[0].findAll("tr"):
             films.append(film) 
 
 
-# In[9]:
+# In[10]:
 
 # Check the length of each list. Directors and films are not the same. This is because in the years 1929, 1930 and 1938 a 
 # director was twice nominated
@@ -233,7 +239,7 @@ print(len(directors))
 print(len(films))
 
 
-# In[10]:
+# In[11]:
 
 # Lets amend this by inserting the necessary director at each position
 directors.insert(45, directors[44])
@@ -241,7 +247,7 @@ directors.insert(13, directors[12])
 directors.insert(10, directors[9])
 
 
-# In[11]:
+# In[12]:
 
 # Now they are the same length
 print(len(years))
@@ -249,7 +255,7 @@ print(len(directors))
 print(len(films))
 
 
-# In[12]:
+# In[13]:
 
 df_directors = pd.DataFrame(columns = ["Year","Director","Film","Winner"])
 start = 0
@@ -262,27 +268,31 @@ for index, row in df_yearRows.iterrows():
         film = films[i]
         director = directors[i]
         if director in winners['director'] and film in winners['film']:
-            isWinner = "Yes"           
+            isWinner = "Yes" 
+            for key, value in enumerate(winners):
+                if value == film:
+                    del winners[key]
+                    break          
         df_directors.loc[df_directors.shape[0]] = [year,director,film,isWinner]
     start = start + numFilms
 df_directors.loc[df_directors['Winner'] == "Yes"]
 
 
-# In[13]:
+# In[14]:
 
 # Now check the years 1929, 1930 and 1938 and see the directors twice nominated
 df_directors["Year"] = df_directors["Year"].astype(int)
 df_directors.loc[(df_directors['Year'].isin([1929, 1930, 1938])) & (df_directors['Winner'] == "No")]
 
 
-# In[14]:
+# In[15]:
 
 # Page 3- Best Actor
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Actor")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[15]:
+# In[16]:
 
 # Here we extract each actor, film and year
 films =[]
@@ -332,7 +342,7 @@ for row in tables[0].findAll("tr"):
         index = index+1   
 
 
-# In[16]:
+# In[17]:
 
 # Check the length of the lists. Actors and films are not equal. This is due to several years having actors nominated for multiple
 # films and serveral films having multiple actors nominated
@@ -341,7 +351,7 @@ print(len(actors))
 print(len(films))
 
 
-# In[17]:
+# In[18]:
 
 # To amend this we have to insert several times in both lists
 actors.insert(1, actors[0])
@@ -349,14 +359,13 @@ actors.insert(3, actors[2])
 actors.insert(13, actors[12])
 actors.insert(15, actors[14])
 films.insert(33, films[32])
-films.insert(34, films[32])
 films.insert(125, films[124])
 films.insert(178, films[177])
 films.insert(218, films[217])
 films.insert(275, films[274])
 
 
-# In[18]:
+# In[19]:
 
 # Now they are the same length
 print(len(years))
@@ -364,7 +373,7 @@ print(len(actors))
 print(len(films))
 
 
-# In[19]:
+# In[20]:
 
 # Because of the actors inserted, the rowcount needs to be updated for the years 1928 and 1930. We increment the 
 # current value by 2
@@ -377,7 +386,7 @@ df_yearRows.set_value(2, 'Rows', int(df_yearRows.loc[2, ["Rows"]][0]) +2)
 print("before increment", int(df_yearRows.loc[2, ["Rows"]][0]))
 
 
-# In[20]:
+# In[21]:
 
 df_actors = pd.DataFrame(columns = ["Year","Actor","Film","Winner"])
 start = 0
@@ -389,35 +398,44 @@ for index, row in df_yearRows.iterrows():
         isWinner = "No"
         actor = actors[i]   
         film = films[i]
+        # If both the actor and the film are in the list of winners then set variable to "Yes"
         if actor in winners['actor'] and film in winners['film']:
-            isWinner = "Yes"           
+            isWinner = "Yes" 
+            # We then want to find the key that stores that actor so we can delete it and the film. This is necessary in 
+            # case of a remake of a previous Oscar winning film eg. "True Grit" or a previous Oscar winner being nominated
+            # for a film that another actor won eg. Spencer Tracey for "Judgement at Nurenberg" in 1961
+            for key, value in enumerate(winners['actor']):
+                if value == actor:
+                    del winners['actor'][key]
+                    del winners['film'][key]
+                    break
         df_actors.loc[df_actors.shape[0]] = [year,actor,film,isWinner]
     start = start + numFilms
 df_actors.loc[df_actors['Winner'] == "Yes"]
 
 
-# In[21]:
+# In[22]:
 
 # Now check the years 1928 and 1930 and see the actors that were twice nominated
 df_actors["Year"] = df_actors["Year"].astype(int)
 df_actors.loc[(df_actors["Year"].isin([1928, 1930])) & (df_actors["Winner"] == "No")]
 
 
-# In[22]:
+# In[23]:
 
 # Now check the years inserted and see that multiple actor nominations for the same films
 years = [1935, 1953, 1964, 1972, 1983]
 df_actors.loc[(df_actors["Year"].isin(years)) & (df_actors["Winner"] == "No")]
 
 
-# In[23]:
+# In[24]:
 
 # Page 4 - Best Actress
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Actress")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[24]:
+# In[25]:
 
 # Here we extract each actress, film and year
 films =[]
@@ -467,7 +485,7 @@ for row in tables[0].findAll("tr"):
         index = index+1   
 
 
-# In[25]:
+# In[26]:
 
 # Check the lengths of the lists. They are not the same. The reasons for this are 
 # 1. The same actress receiving multiple nominations for different films in the same year
@@ -477,7 +495,7 @@ print(len(actresses))
 print(len(films))
 
 
-# In[26]:
+# In[27]:
 
 actresses.insert(1, actresses[0])
 actresses.insert(2, actresses[0])
@@ -486,7 +504,7 @@ films.insert(111, films[110])
 films.insert(158, films[157])
 
 
-# In[27]:
+# In[28]:
 
 # Now they are the same length
 print(len(years))
@@ -494,7 +512,7 @@ print(len(actresses))
 print(len(films))
 
 
-# In[28]:
+# In[29]:
 
 # Because of the actresses inserted, the rowcount needs to be updated for the years 1928 and 1930.
 print("before increment", int(df_yearRows.loc[0, ["Rows"]][0]))
@@ -519,7 +537,12 @@ for index, row in df_yearRows.iterrows():
         actress = actresses[i]   
         film = films[i]        
         if actress in winners['actress'] and film in winners['film']:
-            isWinner = "Yes"           
+            isWinner = "Yes"    
+            for key, value in enumerate(winners['actress']):
+                if value == actress:
+                    del winners['actress'][key]
+                    del winners['film'][key]
+                    break
         df_actresses.loc[df_actresses.shape[0]] = [year,actress,film,isWinner]
     start = start + numFilms
 # Print dataframe and look at the first 3 rows which have the same actress
@@ -633,7 +656,12 @@ for index, row in df_yearRows.iterrows():
         actor = actors[i]   
         film = films[i]
         if actor in winners['actor'] and film in winners['film']:
-            isWinner = "Yes"           
+            isWinner = "Yes"  
+            for key, value in enumerate(winners['actor']):
+                if value == actor:
+                    del winners['actor'][key]
+                    del winners['film'][key]
+                    break
         df_supActors.loc[df_supActors.shape[0]] = [year,actor,film,isWinner]
     start = start + numFilms
 df_supActors.loc[df_supActors["Winner"] == "Yes"]
@@ -744,7 +772,12 @@ for index, row in df_yearRows.iterrows():
         actress = actresses[i]   
         film = films[i]
         if actress in winners['actress'] and film in winners['film']:
-            isWinner = "Yes"           
+            isWinner = "Yes"        
+            for key, value in enumerate(winners['actress']):
+                if value == actress:
+                    del winners['actress'][key]
+                    del winners['film'][key]
+                    break
         df_supActresses.loc[df_supActresses.shape[0]] = [year,actress,film,isWinner]
     start = start + numFilms
 df_supActresses.loc[df_supActresses["Winner"] == "Yes"]
@@ -842,8 +875,12 @@ from prettytable import PrettyTable
 
 # In[53]:
 
-# Return a list of actors ordered by nominations and wins
-actor_mostNom = engine.execute("SELECT actor, (COUNT(actor)) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_actor GROUP BY actor ORDER BY total_nom DESC, total_wins DESC, actor ASC")
+# Query: Return a list of actors ordered by most nominations and wins
+# Explained: We are using two tables - nominee_best_actor and nominee_best_supporting_actor. Therefore we use UNION inside a
+# subquery to combine the results of two queries into one set. Each query counts the number of nominatins for each actor as well 
+# as the number of times they won. We get the total for each actor by summing the results of each query.
+actor_mostNom = engine.execute("SELECT actor, SUM(total_wins) AS total_wins, SUM(total_nom) AS total_nom FROM (SELECT actor, COUNT(actor) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_actor GROUP BY actor UNION SELECT actor, COUNT(actor) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_supporting_actor GROUP BY actor) AS res GROUP BY actor ORDER BY total_nom DESC, total_wins DESC, actor ASC")
+
 table = PrettyTable(['Actor', 'Nominations', 'Wins'])
 for x in actor_mostNom:
     table.add_row([x['actor'], x['total_nom'], x['total_wins']])
@@ -852,18 +889,26 @@ print(table)
 
 # In[54]:
 
-# Return a list of actresses ordered by nominations and wins
-actress_mostNom = engine.execute("SELECT actress, COUNT(actress) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_actress GROUP BY actress ORDER BY total_nom DESC, total_wins DESC, actress ASC")
+# Return a list of actresses ordered by most nominations and wins
+# Explained: We are using two tables - nominee_best_actress and nominee_best_supporting_actress. Therefore we use UNION inside a
+# subquery to combine the results of two queries into one set. Each query counts the number of nominations for each actress as well 
+# as the number of times they won. We get the total for each actress by summing the results of each query.
+supActor_mostNom = engine.execute("SELECT actress, SUM(total_wins) AS total_wins, SUM(total_nom) AS total_nom FROM (SELECT actress, COUNT(actress) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_actress GROUP BY actress UNION SELECT actress, COUNT(actress) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_supporting_actress GROUP BY actress) AS res GROUP BY actress ORDER BY total_nom DESC, total_wins DESC, actress ASC")
+
 table = PrettyTable(['Actress', 'Nominations', 'Wins'])
-for x in actress_mostNom:
+for x in supActor_mostNom:
     table.add_row([x['actress'], x['total_nom'], x['total_wins']])
 print(table)
 
 
 # In[55]:
 
-# Return a list of directors ordered by nominations and wins
-director_mostNom = engine.execute("SELECT director, COUNT(director) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_director GROUP BY director ORDER BY total_nom DESC, total_wins DESC, director ASC")
+# Query: Return a list of directors ordered by most nominations and wins
+# Explained: Because the 1st Osars had winners in different categories we have to use substring to get rid of any brackets 
+# at the end of any names. With the names correct we can now count the number of nominations and the number of wins for each 
+# director.
+director_mostNom = engine.execute("SELECT director, SUM(total_wins) AS total_wins, SUM(total_nom) AS total_nom FROM (SELECT IF(SUBSTRING(director, LENGTH(director)) = ')', SUBSTRING(director, 1, POSITION('(' IN director) -1), director) AS director, COUNT(IF(SUBSTRING(director, LENGTH(director)) = ')', SUBSTRING(director, 1, POSITION('(' IN director) -1), director)) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_director GROUP BY director ) AS res GROUP BY director ORDER BY total_nom DESC, total_wins DESC, director ASC")
+ 
 table = PrettyTable(['Director', 'Nominations', 'Wins'])
 for x in director_mostNom:
     table.add_row([x['director'], x['total_nom'], x['total_wins']])
@@ -872,20 +917,16 @@ print(table)
 
 # In[56]:
 
-# Return a list of actors ordered by nominations and wins
-supActor_mostNom = engine.execute("SELECT actor, (COUNT(actor)) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_supporting_actor GROUP BY actor ORDER BY total_nom DESC, total_wins DESC, actor ASC")
-table = PrettyTable(['Actor', 'Nominations', 'Wins'])
-for x in supActor_mostNom:
-    table.add_row([x['actor'], x['total_nom'], x['total_wins']])
-print(table)
-
-
-# In[57]:
-
-# Return a list of actresses ordered by nominations and wins
-supActress_mostNom = engine.execute("SELECT actress, COUNT(actress) AS total_nom, COUNT(IF (winner = 'Yes', 1, null )) AS total_wins FROM nominee_best_supporting_actress GROUP BY actress ORDER BY total_nom DESC, total_wins DESC, actress ASC")
-table = PrettyTable(['Actress', 'Nominations', 'Wins'])
-for x in supActress_mostNom:
-    table.add_row([x['actress'], x['total_nom'], x['total_wins']])
+# Query: Return a list of directors/companies ordered by most nominations and wins
+# Explained: This query is difficult because the nominee column can have multiple names in it. We are interested in the first name as
+# that is usually the director. The names can be seperated by either commas or 'and' so we use search for the position of 
+# the first comma. If a comma is found then use that as the maximum index for the substring. If not then search for the 
+# position of ' and ' and use that as the maximum index. Finally return the substring and use it to count each occurrence and
+# the number of wins for each.
+picture_mostNom = engine.execute("SELECT IF (POSITION(',' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(',' IN nominee) -1) , IF(POSITION(' and ' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(' and ' IN nominee)), nominee) ) AS director, COUNT(nominee) AS total_nom, COUNT(IF(winner = 'Yes', 1, null)) AS total_wins FROM nominee_best_picture GROUP BY director ORDER BY total_nom DESC, total_wins DESC, director ASC")
+ 
+table = PrettyTable(['Director/Company', 'Nominations', 'Wins'])
+for x in picture_mostNom:
+    table.add_row([x['director'], x['total_nom'], x['total_wins']])
 print(table)
 
