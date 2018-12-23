@@ -578,8 +578,12 @@ from prettytable import PrettyTable    # allow us to output results of queries i
 
 # In[47]:
 
-# Return a list of actors who have won more than 1 Oscar. In descending order of wins
-actor_mostWins = engine.execute("SELECT actor, COUNT(actor) AS total_wins FROM best_actor GROUP BY actor HAVING total_wins > 1 ORDER BY total_wins DESC, actor ASC")
+# Query: Return a list of actors who have won an Oscar. In descending order of wins
+# Explained: We are using two tables - best_actor and best_supporting_actor. Therefore we use UNION inside a subquery to 
+# combine the results of two queries into one set. Each query counts the total for each actor so we sum both totals to get 
+# the total number of wins for each actor.
+actor_mostWins = engine.execute("SELECT actor, SUM(total_wins) AS total_wins FROM (SELECT actor, COUNT(actor) AS total_wins FROM best_actor GROUP BY actor UNION SELECT actor, COUNT(actor) AS total_wins FROM best_supporting_actor GROUP BY actor) AS res GROUP BY actor ORDER BY total_wins DESC, actor ASC")
+
 table = PrettyTable(['Actor', 'Wins'])
 for x in actor_mostWins:
     table.add_row([x['actor'], x['total_wins']])
@@ -588,8 +592,12 @@ print(table)
 
 # In[48]:
 
-# Return a list of actresses who have won more than 1 Oscar. In descending order of wins
-actress_mostWins = engine.execute("SELECT actress, COUNT(actress) AS total_wins FROM best_actress GROUP BY actress HAVING total_wins > 1 ORDER BY total_wins DESC, actress ASC")
+# Query: Return a list of actresses who have won an Oscar. In descending order of wins
+# Explained: We are using two tables - best_actress and best_supporting_actress. Therefore we use UNION inside a subquery to 
+# combine the results of two queries into one set. Each query counts the total for each actress so we sum both totals to get 
+# the total number of wins for each actress.
+actress_mostWins = engine.execute("SELECT actress, SUM(total_wins) AS total_wins FROM ( SELECT actress, COUNT(actress) AS total_wins FROM best_actress GROUP BY actress UNION SELECT actress, COUNT(actress) AS total_wins FROM best_supporting_actress GROUP BY actress) AS res GROUP BY actress ORDER BY total_wins DESC, actress ASC")
+
 table = PrettyTable(['Actress', 'Wins'])
 for x in actress_mostWins:
     table.add_row([x['actress'], x['total_wins']])
@@ -598,8 +606,11 @@ print(table)
 
 # In[49]:
 
-# Return a list of directors who have won more than 1 Oscar. In descending order of wins
-director_mostWins = engine.execute("SELECT director, COUNT(director) AS total_wins FROM best_director GROUP BY director HAVING total_wins > 1 ORDER BY total_wins DESC, director ASC")
+# Query: Return a list of directors who have won an Oscar. In descending order of wins
+# Explained: Because the 1st Osars had winners in different categories we have to use substring to get rid of any brackets at
+# the end of any names. With the names correct we can now get the total for each director
+director_mostWins = engine.execute("SELECT director, SUM(num_wins) AS total_wins FROM (SELECT IF(SUBSTRING(director, LENGTH(director)) = ')', SUBSTRING(director, 1, POSITION('(' IN director) -1), director) AS director, COUNT( IF(SUBSTRING(director, LENGTH(director)) = ')', substring(director, 1, POSITION('(' IN Director) -1), Director)) AS num_wins FROM best_director GROUP BY Director ) AS res GROUP BY Director ORDER BY total_wins DESC, director ASC");
+
 table = PrettyTable(['Director', 'Wins'])
 for x in director_mostWins:
     table.add_row([x['director'], x['total_wins']])
@@ -608,39 +619,15 @@ print(table)
 
 # In[50]:
 
-# Return a list of supporting actors who have won more than 1 Oscar. In descending order of wins
-supActor_mostWins = engine.execute("SELECT actor, COUNT(actor) AS total_wins FROM best_supporting_actor GROUP BY actor HAVING total_wins > 1 ORDER BY total_wins DESC, actor ASC")
-table = PrettyTable(['Actor', 'Wins'])
-for x in supActor_mostWins:
-    table.add_row([x['actor'], x['total_wins']])
-print(table)
+# Query: Return a list of best picture winning directors/companies in descending order of total wins
+# Explained: This query is difficult because the nominee column can have multiple names in it. We are interested in the first
+# name as that is usually the director. The names can be seperated by either commas or 'and' so we use search for the position 
+# of the first comma. If a comma is found then use that as the maximum index for the substring. If not then search for the 
+# position of ' and ' and use that as the maximum index. Finally return the substring and use it for the count.
+picture_mostWins = engine.execute("SELECT IF (POSITION(',' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(',' IN nominee) -1) , IF(POSITION(' and ' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(' and ' IN nominee)), nominee) ) AS director, COUNT(nominee) AS total_wins FROM best_picture GROUP BY director ORDER BY total_wins DESC, director ASC")
 
-
-# In[51]:
-
-# Return a list of supporting actresses who have won more than 1 Oscar. In descending order of wins
-actress_mostWins = engine.execute("SELECT actress, COUNT(actress) AS total_wins FROM best_supporting_actress GROUP BY actress HAVING total_wins > 1 ORDER BY total_wins DESC, actress ASC")
-table = PrettyTable(['Actress', 'Wins'])
-for x in actress_mostWins:
-    table.add_row([x['actress'], x['total_wins']])
-print(table)
-
-
-# In[52]:
-
-# Return a list of best picture winning directors/companies in descending order of total wins
-# This query is more complex because the nominee column can have multiple names in it. We are interested in the first name as
-# that is usually the director. The names can be seperated by commas or 'and' so we use search for the position of the first comma.
-# If a comma is found then use that as the maximum index for the substring. If not then search for the position of ' and ' and
-# use that as the maximum index. Return the substring
-picture_mostWins = engine.execute("SELECT IF (POSITION(',' IN nominee) > 0 , SUBSTRING(nominee, 1, POSITION(',' IN nominee) -1) , IF(POSITION(' and ' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(' and ' IN nominee)), nominee) ) AS director, COUNT(nominee) AS total_wins FROM best_picture GROUP BY director ORDER BY total_wins DESC, director ASC")
 table = PrettyTable(['Director/Company', 'Wins'])
 for x in picture_mostWins:
     table.add_row([x['director'], x['total_wins']])
 print(table)
-
-
-# In[ ]:
-
-
 
