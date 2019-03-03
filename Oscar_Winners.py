@@ -17,22 +17,13 @@
 
 # In[2]:
 
-import urllib2;                    # for retrieving the contents of a page
-from bs4 import BeautifulSoup;     # for parsing the contents of a page to HTML
-import pandas as pd                # for creating dataframes
-import re                          # for regular expressions
+import pandas as pd          # For creating dataframes
 
 
 # In[3]:
 
-# function that takes in a URL and returns the contents of the page
-def loadPage(url):
-    page = urllib2.urlopen(url)
-    data = BeautifulSoup(page, "lxml")
-    return data
-
-# style of table cells that have Oscar winners in them
-winnerStyle = 'background:#FAEB86'
+# Import functions from file
+from functions import loadPage, extractYears, extractFilmData
 
 
 # In[4]:
@@ -40,129 +31,56 @@ winnerStyle = 'background:#FAEB86'
 # Page 1- Best Picture
 # Call function to read in URL and retrieve data from the page
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Picture")
-# from the data get all the tables that have the following class
+# From the data get all the tables that have the following class
 tables = data.findAll("table", class_= "wikitable")
 
 
 # In[5]:
 
-# There are tables for each decade starting from the 1920's. We want to go through each table and extract the appropriate information
-# Create empty lists for each film and nominee
-films = []
-nominees = []
-
-# There are ten tables so we use range to keep track 
-for i in range(0, 11):
-    # For each table get each row start with the following style ie. could be 'background:#FAEB86' or 'background:#FAEB86;'
-    for row in tables[i].findAll("tr", style=re.compile('^'+winnerStyle)):
-        # Get each cell within that row
-        cells = row.findAll('td')
-        # Get the text from within the first cell, encode it to utf-8 and add it to the films list
-        if(len(cells) > 0):        
-            film = cells[0].find(text=True).encode('utf-8').strip()
-            films.append(film)
-            # Get the text from within the second cell, encode it and add it to the list of nominees
-        if(len(cells) > 1):      
-            nominee = cells[1].findAll(text=True)[:-1]
-            nominees.append("".join(nominee).encode('utf-8').strip() )    
+# Call function to get the film data from tables
+data = extractFilmData("picture", tables)
+# Create lists from the dictionary columns
+films = data["films"]
+producer = data["names"]
+# Call function to get a list of years from tables
+years = extractYears("picture", tables)
 
 
 # In[6]:
 
-# Here we extract the years. Years can be different formats depending on how far back they are ie. 1927/28, 1927/1928, 1928
-# Create an empty list for each year
-years = []
-for i in range(0, 11):  
-    # For each table row get each cell with the following style
-    for row in tables[i].findAll("td", style="text-align:center"):
-            # Get each link within that row
-            cells = row.findAll('a')
-            # If year is all in one link and in a format like 1927/28 then we want the first two and last two charaters so 
-            # that it will be 1928
-            if(len(cells[0].find(text=True)) == 7):
-                year = cells[0].find(text=True)[0:2] + cells[0].find(text=True)[5:7]
-            # If year is in two links and the second link has four numbers ie. 1927/1928 then we want the second link
-            elif(len(cells[1].find(text=True)) == 4):       
-                if (cells[1].find(text=True).isnumeric()):
-                    year = cells[1].find(text=True)
-            # If the year is in two links and the second link has two numbers ie. 1927/28 then we want the first two characters
-            # of the first link and the last two of the second link
-            elif(len(cells[1].find(text=True)) == 2):
-                if (cells[1].find(text=True).isnumeric()):
-                    year = cells[0].find(text=True)[0:2] + cells[1].find(text=True)
-            # Else the year is in a standard format ie. 1928 so get four characters
-            else:
-                year = cells[0].find(text=True)[0:4]
-            # add year to list of years
-            years.append(year)
+# Check the length of each list. They are all the same length.
+print(len(films))
+print(len(producer))
+print(len(years))
 
 
 # In[7]:
 
-# Check the length of each list. They are all the same
-print(len(films))
-print(len(nominees))
-print(len(years))
-
-
-# In[8]:
-
-# Create a data frame for storing each list
+# Create a data frame for storing each Best Picture Winner
 df_picture = pd.DataFrame()
 df_picture["Year"] = pd.to_numeric(years, errors='coerce')
 df_picture["Film"] = films
-df_picture["Nominee"] = nominees
+df_picture["Producers"] = producer
+# Show the dataframe
 df_picture
 
 
-# In[9]:
+# In[8]:
 
 # Page2 - Best Director
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Director")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
+# In[9]:
+
+data = extractFilmData("director", tables)
+films = data["films"]
+directors = data["names"]
+years = extractYears("director", tables)
+
+
 # In[10]:
-
-# Here we extract each film and its director. All the data is stored in one table.
-# Create empty lists for storing each film and director
-films =[]
-directors = []
-# Get each row within the table
-for row in tables[0].findAll("tr"):
-        cells = row.findAll("td", style=re.compile('^'+winnerStyle))
-        # For the first year there was two categories of winners so we want to include that information. It is inside a span tag.
-        # FindAll() gets all the text within the cell including child tags. 
-        #Finally use join() to merge the text into one string and add it to the list of direcors
-        if(len(cells) > 0):
-            director = cells[0].findAll(text=True)[:-1]
-            directors.append("".join(director).encode('utf-8').strip())  
-        # Get the film from the second cell and add it to the list of films
-        if(len(cells) > 1):
-            film = cells[1].find(text=True).encode('utf-8').strip() 
-            films.append(film)
-
-
-# In[11]:
-
-# Here we extract the years.
-years = []
-for row in tables[0].findAll("th", scope="row"):
-    cells = row.findAll('a')     
-    if(len(cells[0].find(text=True)) == 7):
-        year = cells[0].find(text=True)[0:2] + cells[0].find(text=True)[5:7]
-    elif(len(cells[1].find(text=True)) == 4):       
-        if (cells[1].find(text=True).isnumeric()):
-            year = cells[1].find(text=True)  
-    elif(len(cells[1].find(text=True)) == 2):
-        if (cells[1].find(text=True).isnumeric()):
-            year = cells[0].find(text=True)[0:2] + cells[1].find(text=True)
-    else:
-        year = cells[0].find(text=True)[0:4]
-    years.append(year)
-
-
-# In[12]:
 
 # Check the length of each list. Due to the 1st Oscars having multiple awards they are not the same length
 print(len(films))
@@ -170,13 +88,13 @@ print(len(directors))
 print(len(years))
 
 
-# In[13]:
+# In[11]:
 
-# To amend this lets insert a year at the position 1 with the same value as the position 0
+# To amend this lets insert a year at the position 1 with the same value as the year at position 0
 years.insert(1, years[0])
 
 
-# In[14]:
+# In[12]:
 
 # Now they are all the same length
 print(len(films))
@@ -184,82 +102,42 @@ print(len(directors))
 print(len(years))
 
 
-# In[15]:
+# In[13]:
 
-# Create a data frame for storing each list and print it
 df_directors = pd.DataFrame()
 df_directors["Year"] = pd.to_numeric(years, errors='coerce')
 df_directors["Director"] = directors
 df_directors["Film"] = films
-# Look at the data frame.
+# Look at the data frame and see the first two indexes have the same year.
 df_directors
 
 
-# In[16]:
+# In[14]:
 
 # Page 3- Best Actor
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Actor")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[17]:
+# In[15]:
 
-# Here we extract each actor and film
-films =[]
-actors = []
-for row in tables[0].findAll("tr"):
-    cells = row.findAll("td", style=re.compile('^'+winnerStyle))    
-    # Index variable to keep track of the cell we are in
-    index = 0
-    for c in cells:
-        # Get all the links within each cell
-        links = c.findAll("a")
-        for l in links:
-            # If link has the attribute 'title' then we want it
-            if(l.has_attr('title')):
-                # If it is the first cell then get the text and add it to the list of actors
-                if(index == 0): 
-                    actor = l.find(text=True).encode('utf-8').strip()
-                    actors.append(actor)
-                # If it is the third cell then get the text and add it to the list of films
-                elif(index == 2): 
-                    film = l.find(text=True).encode('utf-8').strip()
-                    films.append(film)
-        # increment index
-        index = index+1         
-        
+data = extractFilmData("actor", tables)
+films = data["films"]
+actors = data["names"]
+years = extractYears("actor", tables)
 
 
-# In[18]:
+# In[16]:
 
-# Here we extract the years
-years = []
-for row in tables[0].findAll("th", scope="row"):
-    cells = row.findAll('a')     
-    if(len(cells[0].find(text=True)) == 7):
-        year = cells[0].find(text=True)[0:2] + cells[0].find(text=True)[5:7]
-    elif(len(cells[1].find(text=True)) == 4):       
-        if (cells[1].find(text=True).isnumeric()):
-            year = cells[1].find(text=True)  
-    elif(len(cells[1].find(text=True)) == 2):
-        if (cells[1].find(text=True).isnumeric()):
-            year = cells[0].find(text=True)[0:2] + cells[1].find(text=True)
-    else:
-        year = cells[0].find(text=True)[0:4]
-    years.append(year)
-
-
-# In[19]:
-
-# Check the length of each list. They are not the same. There are two reasons for this.
-# 1. In the 1st Oscars the actor won awards for two films
+# Check the length of each list. They are not the same length. There are two reasons for this.
+# 1. In the 1st Oscars ceremony, the actor won awards for two films
 # 2. In 1932 there was a tie for 1st place
 print(len(films))
 print(len(actors))
 print(len(years))
 
 
-# In[20]:
+# In[17]:
 
 # To amend this lets insert the actor at position 0 into position 1 and insert the appropriate years at position 1 and 6 of years
 actors.insert(1, actors[0])
@@ -267,7 +145,7 @@ years.insert(1, years[0])
 years.insert(6, years[5])
 
 
-# In[21]:
+# In[18]:
 
 # Now they are all the same length
 print(len(films))
@@ -275,65 +153,32 @@ print(len(actors))
 print(len(years))
 
 
-# In[22]:
+# In[19]:
 
-# Create a data frame for storing the lists
 df_actors = pd.DataFrame()
 df_actors["Year"] = pd.to_numeric(years, errors='coerce')
 df_actors["Actor"] = actors
 df_actors["Film"] = films
-# Print the data frame and look at years 1928 and 1932
+# Show the dataframe and look at years 1928 and 1932
 df_actors
 
 
-# In[23]:
+# In[20]:
 
 # Page 4- Best Actress
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Actress")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[24]:
+# In[21]:
 
-# Here we extract each actress and film
-films =[]
-actresses = []
-for row in tables[0].findAll("tr"):
-    cells = row.findAll("td", style=re.compile('^'+winnerStyle))   
-    index = 0
-    for c in cells:
-        links = c.findAll("a")
-        for l in links:
-            if(l.has_attr('title')):
-                if(index == 0): 
-                    actress = l.find(text=True).encode('utf-8').strip()
-                    actresses.append(actress)
-                elif(index == 2): 
-                    movie = l.find(text=True).encode('utf-8').strip()
-                    films.append(movie)
-        index = index+1         
+data = extractFilmData("actress", tables)
+films = data["films"]
+actresses = data["names"]
+years = extractYears("actress", tables)
 
 
-# In[25]:
-
-# Here we extract each year
-years = []
-for row in tables[0].findAll("th", scope="row"):
-    cells = row.findAll('a')     
-    if(len(cells[0].find(text=True)) == 7):
-        year = cells[0].find(text=True)[0:2] + cells[0].find(text=True)[5:7]
-    elif(len(cells[1].find(text=True)) == 4):       
-        if (cells[1].find(text=True).isnumeric()):
-            year = cells[1].find(text=True)  
-    elif(len(cells[1].find(text=True)) == 2):
-        if (cells[1].find(text=True).isnumeric()):
-            year = cells[0].find(text=True)[0:2] + cells[1].find(text=True)
-    else:
-        year = cells[0].find(text=True)[0:4] 
-    years.append(year)
-
-
-# In[26]:
+# In[22]:
 
 # Check the length of each list. They are not the same. There are two reasons for this.
 # 1. In the 1st Oscars the actress won awards for three films
@@ -343,9 +188,9 @@ print(len(films))
 print(len(years))
 
 
-# In[27]:
+# In[23]:
 
-# Lets amend this by inserting the actress at the position 0 to position 1 and 2. Do the same for the years
+# Lets amend this by inserting the actress at the position 0 to positions 1 and 2. Do the same for the years
 # Also insert the year at position 40 into position 41
 actresses.insert(1, actresses[0])
 actresses.insert(2, actresses[1])
@@ -354,7 +199,7 @@ years.insert(1, years[0])
 years.insert(2, years[1])
 
 
-# In[28]:
+# In[24]:
 
 # Now they are all the same length
 print(len(actresses))
@@ -362,63 +207,38 @@ print(len(films))
 print(len(years))
 
 
-# In[29]:
+# In[25]:
 
-# Create a data frame for storing the lists
 df_actresses = pd.DataFrame()
 df_actresses["Year"] = pd.to_numeric(years, errors='coerce')
 df_actresses["Actress"] = actresses
 df_actresses["Film"] = films
-# Print the dataframe and look at the first three indexes which have the same year and actress but different films
+# Show the dataframe and look at the first three rows which have the same year and actress but different films
 df_actresses
 
 
-# In[30]:
+# In[26]:
 
-# Now check the year 1968 and see two actresses and films
+# Now check the year 1968 and see two actresses and two films
 df_actresses.loc[df_actresses['Year'] == 1968]
 
 
-# In[31]:
+# In[27]:
 
 # Page 5 - Best Supporting Actor
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Supporting_Actor")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[32]:
+# In[28]:
 
-# Here we extract each actor and film
-films =[]
-actors = []
-for row in tables[0].findAll("tr"):
-    cells = row.findAll("td", style=re.compile('^'+winnerStyle))   
-    index = 0
-    for c in cells:
-        links = c.findAll("a")
-        for l in links:
-            if(l.has_attr('title')):
-                if(index == 0): 
-                    actor = l.find(text=True).encode('utf-8').strip()
-                    actors.append(actor)
-                elif(index == 2): 
-                    movie = l.find(text=True).encode('utf-8').strip()
-                    films.append(movie)
-        index = index+1  
+data = extractFilmData("supporting actor", tables)
+films = data["films"]
+actors = data["names"]
+years = extractYears("supporting actor", tables)
 
 
-# In[33]:
-
-# Here we extract the years. Because these awards started in 1936 all the years are in the correct format
-years = []
-for row in tables[0].findAll("th", scope="row"):
-    cells = row.findAll('a') 
-    if(len(cells) > 1):        
-        year = cells[0].find(text=True)[0:4] 
-        years.append(year)
-
-
-# In[34]:
+# In[29]:
 
 # Check all lists are the same length, they are
 print(len(actors))
@@ -426,57 +246,31 @@ print(len(films))
 print(len(years))
 
 
-# In[35]:
+# In[30]:
 
-# Create a data frame for storing the lists
 df_supActors = pd.DataFrame()
 df_supActors["Year"] = pd.to_numeric(years, errors='coerce')
 df_supActors["Actor"] = actors
 df_supActors["Film"] = films
-# Print data frame
 df_supActors
 
 
-# In[36]:
+# In[31]:
 
 # Page 6 - Best Supporting Actress
 data = loadPage("https://en.wikipedia.org/wiki/Academy_Award_for_Best_Supporting_Actress")
 tables = data.findAll("table", class_= "wikitable sortable")
 
 
-# In[37]:
+# In[32]:
 
-# Here we extract each actress and film
-films =[]
-actresses = []
-for row in tables[0].findAll("tr"):
-    cells = row.findAll("td", style=re.compile('^'+winnerStyle))   
-    index = 0
-    for c in cells:
-        links = c.findAll("a")
-        for l in links:
-            if(l.has_attr('title')):
-                if(index == 0): 
-                    actress = l.find(text=True).encode('utf-8').strip()
-                    actresses.append(actress)
-                elif(index == 2): 
-                    movie = l.find(text=True).encode('utf-8').strip()
-                    films.append(movie)
-        index = index+1  
+data = extractFilmData("supporting actress", tables)
+films = data["films"]
+actresses = data["names"]
+years = extractYears("supporting actress", tables)
 
 
-# In[38]:
-
-# Here we extract the years. Because these awards started in 1936 all the years are in the correct format
-years = []
-for row in tables[0].findAll("th", scope="row"):
-    cells = row.findAll('a')  
-    if(len(cells) > 1):
-        year = cells[0].find(text=True)
-        years.append(year)
-
-
-# In[39]:
+# In[33]:
 
 # Check all the lists are the same length, they are
 print(len(actresses))
@@ -484,35 +278,33 @@ print(len(films))
 print(len(years))
 
 
-# In[40]:
+# In[34]:
 
-# Create a data frame for storing the lists
 df_supActresses = pd.DataFrame()
 df_supActresses["Year"] = pd.to_numeric(years, errors='coerce')
 df_supActresses["Actress"] = actresses
 df_supActresses["Film"] = films
-# Print data frame
 df_supActresses
 
 
-# In[41]:
+# In[35]:
 
 # Print the number of rows in each data frame
-print(df_picture.shape[0])
-print(df_directors.shape[0])
-print(df_actors.shape[0])
-print(df_actresses.shape[0])
-print(df_supActors.shape[0])
-print(df_supActresses.shape[0])
+print("total best picture winners       " '{0}'.format(df_picture.shape[0]))
+print("total best director winners      " '{0}'.format(df_directors.shape[0]))
+print("total best actor winners         " '{0}'.format(df_actors.shape[0]))
+print("total best actress winners       " '{0}'.format(df_actresses.shape[0]))
+print("total best supp. actor winners   " '{0}'.format(df_supActors.shape[0]))
+print("total best supp. actress winners " '{0}'.format(df_supActresses.shape[0]))
 
 
-# In[42]:
+# In[36]:
 
 # Now all the data has been read into data frames, the next step is to connect to MYSQL and store it in the database
-from sqlalchemy import create_engine    # for connecting to MySQL
-from MySQL_connect import config        # import MySQL_connect.py for connection parameters
+from sqlalchemy import create_engine    # For connecting to MySQL
+from MySQL_connect import config        # Import connection parameters from file
 
-# use the parameters from file to create connection variables
+# Use the parameters to create connection variables
 user = config['user']
 password = config['password']
 host = config['host']
@@ -522,18 +314,18 @@ db = config['db']
 engine = create_engine("mysql+mysqldb://"+user+":"+password+"@"+host+"/"+db+"?charset=utf8")
 
 
-# In[43]:
+# In[37]:
 
 # Insert the data from each data frame into tables. If the table already exists overwrite it
-df_picture.to_sql('best_picture', con=engine, if_exists='replace', index_label='id')
-df_directors.to_sql('best_director', con=engine, if_exists='replace', index_label='id')
-df_actors.to_sql('best_actor', con=engine, if_exists='replace', index_label='id')
-df_actresses.to_sql('best_actress', con=engine, if_exists='replace', index_label='id')
-df_supActors.to_sql('best_supporting_actor', con=engine, if_exists='replace', index_label='id')
-df_supActresses.to_sql('best_supporting_actress', con=engine, if_exists='replace', index_label='id')
+df_picture.to_sql('winner_best_picture', con=engine, if_exists='replace', index_label='id')
+df_directors.to_sql('winner_best_director', con=engine, if_exists='replace', index_label='id')
+df_actors.to_sql('winner_best_actor', con=engine, if_exists='replace', index_label='id')
+df_actresses.to_sql('winner_best_actress', con=engine, if_exists='replace', index_label='id')
+df_supActors.to_sql('winner_best_supporting_actor', con=engine, if_exists='replace', index_label='id')
+df_supActresses.to_sql('winner_best_supporting_actress', con=engine, if_exists='replace', index_label='id')
 
 
-# In[44]:
+# In[38]:
 
 # Show that the tables have been created
 res = engine.execute("SHOW TABLES")
@@ -541,48 +333,49 @@ for x in res:
     print(x)
 
 
-# In[45]:
+# In[39]:
 
 # Now lets run some queries on the tables
-# First return the number of row in each table
-num_res = engine.execute("SELECT COUNT(*) FROM best_picture")
+# First return the number of rows in each table
+num_res = engine.execute("SELECT COUNT(*) FROM winner_best_picture")
 print("Best Picture number of rows")
 for x in num_res:
     print(x)
-num_res = engine.execute("SELECT COUNT(*) FROM best_director")
+num_res = engine.execute("SELECT COUNT(*) FROM winner_best_director")
 print("Best Director number of rows")
 for x in num_res:
     print(x)
-num_res = engine.execute("SELECT COUNT(*) FROM best_actor")
+num_res = engine.execute("SELECT COUNT(*) FROM winner_best_actor")
 print("Best Actor number of rows")
 for x in num_res:
     print(x)
-num_res = engine.execute("SELECT COUNT(*) FROM best_actress")
+num_res = engine.execute("SELECT COUNT(*) FROM winner_best_actress")
 print("Best Actress number of rows")
 for x in num_res:
     print(x)
-num_res = engine.execute("SELECT COUNT(*) FROM best_supporting_actor")
+num_res = engine.execute("SELECT COUNT(*) FROM winner_best_supporting_actor")
 print("Best Supporting Actor number of rows")
 for x in num_res:
     print(x)
-num_res = engine.execute("SELECT COUNT(*) FROM best_supporting_actress")
+num_res = engine.execute("SELECT COUNT(*) FROM winner_best_supporting_actress")
 print("Best Supporting Actress number of rows")
 for x in num_res:
     print(x)
 
 
-# In[46]:
+# In[40]:
 
-from prettytable import PrettyTable    # allow us to output results of queries in table format
+# For displaying results in a table format
+from prettytable import PrettyTable    
 
 
-# In[47]:
+# In[41]:
 
 # Query: Return a list of actors who have won an Oscar. In descending order of wins
 # Explained: We are using two tables - best_actor and best_supporting_actor. Therefore we use UNION inside a subquery to 
 # combine the results of two queries into one set. Each query counts the total for each actor so we sum both totals to get 
 # the total number of wins for each actor.
-actor_mostWins = engine.execute("SELECT actor, SUM(total_wins) AS total_wins FROM (SELECT actor, COUNT(actor) AS total_wins FROM best_actor GROUP BY actor UNION SELECT actor, COUNT(actor) AS total_wins FROM best_supporting_actor GROUP BY actor) AS res GROUP BY actor ORDER BY total_wins DESC, actor ASC")
+actor_mostWins = engine.execute("SELECT actor, SUM(total_wins) AS total_wins FROM (SELECT actor, COUNT(actor) AS total_wins FROM winner_best_actor GROUP BY actor UNION SELECT actor, COUNT(actor) AS total_wins FROM winner_best_supporting_actor GROUP BY actor) AS res GROUP BY actor ORDER BY total_wins DESC, actor ASC")
 
 table = PrettyTable(['Actor', 'Wins'])
 for x in actor_mostWins:
@@ -590,13 +383,13 @@ for x in actor_mostWins:
 print(table)
 
 
-# In[48]:
+# In[42]:
 
 # Query: Return a list of actresses who have won an Oscar. In descending order of wins
 # Explained: We are using two tables - best_actress and best_supporting_actress. Therefore we use UNION inside a subquery to 
 # combine the results of two queries into one set. Each query counts the total for each actress so we sum both totals to get 
 # the total number of wins for each actress.
-actress_mostWins = engine.execute("SELECT actress, SUM(total_wins) AS total_wins FROM ( SELECT actress, COUNT(actress) AS total_wins FROM best_actress GROUP BY actress UNION SELECT actress, COUNT(actress) AS total_wins FROM best_supporting_actress GROUP BY actress) AS res GROUP BY actress ORDER BY total_wins DESC, actress ASC")
+actress_mostWins = engine.execute("SELECT actress, SUM(total_wins) AS total_wins FROM ( SELECT actress, COUNT(actress) AS total_wins FROM winner_best_actress GROUP BY actress UNION SELECT actress, COUNT(actress) AS total_wins FROM winner_best_supporting_actress GROUP BY actress) AS res GROUP BY actress ORDER BY total_wins DESC, actress ASC")
 
 table = PrettyTable(['Actress', 'Wins'])
 for x in actress_mostWins:
@@ -604,12 +397,12 @@ for x in actress_mostWins:
 print(table)
 
 
-# In[49]:
+# In[43]:
 
 # Query: Return a list of directors who have won an Oscar. In descending order of wins
 # Explained: Because the 1st Osars had winners in different categories we have to use substring to get rid of any brackets at
 # the end of any names. With the names correct we can now get the total for each director
-director_mostWins = engine.execute("SELECT director, SUM(num_wins) AS total_wins FROM (SELECT IF(SUBSTRING(director, LENGTH(director)) = ')', SUBSTRING(director, 1, POSITION('(' IN director) -1), director) AS director, COUNT( IF(SUBSTRING(director, LENGTH(director)) = ')', substring(director, 1, POSITION('(' IN Director) -1), Director)) AS num_wins FROM best_director GROUP BY Director ) AS res GROUP BY Director ORDER BY total_wins DESC, director ASC");
+director_mostWins = engine.execute("SELECT director, SUM(num_wins) AS total_wins FROM (SELECT IF(SUBSTRING(director, LENGTH(director)) = ')', SUBSTRING(director, 1, POSITION('(' IN director) -1), director) AS director, COUNT( IF(SUBSTRING(director, LENGTH(director)) = ')', SUBSTRING(director, 1, POSITION('(' IN Director) -1), Director)) AS num_wins FROM winner_best_director GROUP BY Director ) AS res GROUP BY Director ORDER BY total_wins DESC, director ASC");
 
 table = PrettyTable(['Director', 'Wins'])
 for x in director_mostWins:
@@ -617,17 +410,17 @@ for x in director_mostWins:
 print(table)
 
 
-# In[50]:
+# In[44]:
 
-# Query: Return a list of best picture winning directors/companies in descending order of total wins
-# Explained: This query is difficult because the nominee column can have multiple names in it. We are interested in the first
+# Query: Return a list of best picture winning producers in descending order of total wins
+# Explained: This query is difficult because the producers column can have multiple names in it. We are interested in the first
 # name as that is usually the director. The names can be seperated by either commas or 'and' so we use search for the position 
 # of the first comma. If a comma is found then use that as the maximum index for the substring. If not then search for the 
 # position of ' and ' and use that as the maximum index. Finally return the substring and use it for the count.
-picture_mostWins = engine.execute("SELECT IF (POSITION(',' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(',' IN nominee) -1) , IF(POSITION(' and ' IN nominee) > 0, SUBSTRING(nominee, 1, POSITION(' and ' IN nominee)), nominee) ) AS director, COUNT(nominee) AS total_wins FROM best_picture GROUP BY director ORDER BY total_wins DESC, director ASC")
+picture_mostWins = engine.execute("SELECT IF (POSITION(',' IN producers) > 0, SUBSTRING(producers, 1, POSITION(',' IN producers) -1) , IF(POSITION(' and ' IN producers) > 0, SUBSTRING(producers, 1, POSITION(' and ' IN producers)), producers) ) AS name, COUNT(producers) AS total_wins FROM winner_best_picture GROUP BY name ORDER BY total_wins DESC, name ASC")
 
-table = PrettyTable(['Director/Company', 'Wins'])
+table = PrettyTable(['Producer', 'Wins'])
 for x in picture_mostWins:
-    table.add_row([x['director'], x['total_wins']])
+    table.add_row([x['name'], x['total_wins']])
 print(table)
 
